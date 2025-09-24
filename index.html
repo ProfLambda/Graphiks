@@ -1,0 +1,388 @@
+<!DOCTYPE html>
+<html lang="fr">
+	<head>
+		<meta charset="utf-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1" />
+		<title>GraPhiks — CSV embarqué + drag&drop</title>
+		<style>
+			body {
+				font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial,
+					sans-serif;
+				margin: 0;
+				padding: 24px;
+				background: #f7f7fb;
+			}
+			h1 {
+				margin: 0 0 6px;
+			}
+			.subtitle {
+				color: #555;
+				margin: 0 0 16px;
+			}
+			.controls {
+				display: flex;
+				gap: 12px;
+				align-items: center;
+				flex-wrap: wrap;
+				margin-bottom: 16px;
+			}
+			.drop {
+				border: 2px dashed #9aa;
+				background: #eef3ff;
+				color: #334;
+				padding: 14px 16px;
+				border-radius: 12px;
+				min-width: 280px;
+				text-align: center;
+				cursor: pointer;
+			}
+			.drop.dragover {
+				background: #dfe9ff;
+				border-color: #557;
+			}
+			.grid {
+				display: grid;
+				gap: 20px;
+				grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+			}
+			.card {
+				background: #fff;
+				border-radius: 16px;
+				padding: 16px;
+				box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
+			}
+			.card h3 {
+				margin: 4px 0 4px;
+				font-size: 16px;
+			}
+			.subline {
+				margin: 0 0 10px;
+				color: #333;
+				font-size: 13px;
+			}
+			canvas {
+				width: 100% !important;
+				height: 320px !important;
+			}
+			.meta {
+				margin-top: 10px;
+				color: #444;
+				font-size: 13px;
+				line-height: 1.5;
+			}
+			.meta-row {
+				display: flex;
+				gap: 8px;
+				flex-wrap: wrap;
+			}
+			.pill {
+				background: #f2f4f7;
+				border-radius: 999px;
+				padding: 2px 8px;
+				font-size: 12px;
+				color: #333;
+			}
+			.pill b {
+				font-weight: 600;
+			}
+		</style>
+	</head>
+	<body>
+		<h1>Graphiques radar par professeur</h1>
+		<p class="subtitle"
+			>Données embarquées dans la page (CSV) • Échelle 0–3 • Glissez-déposez
+			un CSV pour recharger.</p
+		>
+
+		<div class="controls">
+			<div id="drop" class="drop"
+				>Déposez un fichier CSV ici (ou cliquez pour choisir)</div
+			>
+			<input
+				type="file"
+				id="file"
+				accept=".csv,text/csv"
+				style="display: none" />
+		</div>
+
+		<div id="grid" class="grid"></div>
+
+		<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
+		<script>
+			// --- CSV embarqué ---
+			let intitules = `A;Le formateur respecte les horaires de début et de fin de cours.
+B;Les objectifs pédagogiques sont clairement définis.
+C;Les séances sont structurées et organisées de façon logique et claire.
+D;Les supports utilisés (présentations, documents, outils) sont clairs, utiles et actualisés.
+E;Les supports utilisés sont mis à disposition des apprentis sur le cahier de texte Netyparéo.
+F;Le rythme des évaluations vous permet de situer votre niveau de maîtrise des compétences.
+G;Les notions sont expliquées de manière claire à l'aide d'exemples concrets pour faciliter la compréhension.
+H;Les enseignements font le lien avec la réalité des entreprises.
+I;Le.la formateur.ice vérifie régulièrement la compréhension des notions par l'ensemble du groupe.
+J;Les séances sont rythmées en variant les méthodes d'apprentissage (cours, échanges, exercices, travaux de groupe, quizz...).
+K;Les méthodes d'apprentissages sont adaptées pour les séances en distanciel.
+L;Le.la formateur.ice instaure et fait respecter un climat de confiance, de bienveillance et de respect mutuel.
+M;Le.la formateur.ice favorise la participation de chacun.e et l'interaction avec le groupe.
+N;Le.la formateur.ice sait s'adapter avec autorité et bienveillance face aux comportements inadaptés ou situations difficiles.
+O;Le.la formateur.ice se montre disponible pour répondre aux questions et attentif aux besoins des apprentis.
+P;Le.la formateur.ice favorise les échanges avec les apprentis sur sa pratique et tient compte de leurs retours.`;
+
+			let tableau = `ref;Nombre de réponses;Nom;A;B;C;D;E;F;G;H;I;J;K;L;M;N;O;P;SECTION;CLASSE
+1;1;NOM & PRENOM 1;3,00;2,00;2,00;3,00;3,00;2,00;1,00;2,00;3,00;3,00;3,00;3,00;3,00;3,00;3,00;3,00;SM;SECRÉTAIRES MÉDICALES
+2;2;NOM & PRENOM 2;2,00;2,50;2,50;1,50;3,00;2,50;2,00;2,50;1,50;1,50;2,50;1,50;2,00;1,50;2,00;2,00;SM;SECRÉTAIRES MÉDICALES
+3;5;NOM & PRENOM 3;3,00;2,80;2,80;2,80;3,00;2,80;2,80;2,20;3,00;2,80;2,60;3,00;3,00;3,00;3,00;2,40;SM;SECRÉTAIRES MÉDICALES
+4;1;NOM & PRENOM 4;3,00;3,00;3,00;3,00;3,00;3,00;3,00;3,00;3,00;1,00;3,00;2,00;2,00;3,00;2,00;3,00;SM;SECRÉTAIRES MÉDICALES
+5;1;NOM & PRENOM 5;3,00;3,00;3,00;3,00;2,00;2,00;3,00;3,00;3,00;3,00;3,00;2,00;3,00;3,00;3,00;2,00;SM;SECRÉTAIRES MÉDICALES
+6;1;NOM & PRENOM 6;2,00;1,00;1,00;3,00;3,00;1,00;3,00;2,00;1,00;2,00;0,00;3,00;2,00;1,00;3,00;3,00;SM;SECRÉTAIRES MÉDICALES
+7;1;NOM & PRENOM 7;3,00;2,00;2,00;1,00;1,00;2,00;2,00;2,00;2,00;2,00;0,00;2,00;2,00;2,00;2,00;2,00;BTS;BTS COM 1A
+8;14;NOM & PRENOM 8;2,71;2,71;2,79;2,86;3,00;2,71;2,79;2,29;2,43;2,79;2,64;2,93;2,79;2,71;2,71;2,86;BTS;BTS MCO 1A
+9;12;NOM & PRENOM 9;3,00;2,92;2,92;2,83;2,67;2,67;2,92;2,58;3,00;2,67;2,83;3,00;2,92;2,83;3,00;2,92;BTS;BTS SIO 1A
+10;6;NOM & PRENOM 10;2,50;1,50;1,17;1,33;2,00;1,33;1,33;2,00;1,50;1,67;1,50;1,50;1,67;1,67;1,83;1,67;BTS;BTS COM 1A
+11;7;NOM & PRENOM 11;3,00;2,71;2,43;2,57;2,86;2,00;2,29;2,57;2,57;2,57;2,57;2,43;2,71;2,71;2,57;2,57;BTS;BTS GPME 1A
+12;11;NOM & PRENOM 12;2,73;2,36;2,55;2,64;2,64;2,09;2,45;2,00;2,36;2,45;2,36;2,82;2,73;2,73;2,64;2,73;BTS;BTS SAM 1A
+13;2;NOM & PRENOM 13;3,00;3,00;2,50;3,00;3,00;2,50;2,50;3,00;3,00;2,50;2,50;2,50;2,50;2,50;2,50;2,50;BTS;BTS SIO 1A
+14;6;NOM & PRENOM 14;3,00;3,00;3,00;3,00;2,67;3,00;2,83;2,33;3,00;2,33;2,33;3,00;2,83;2,83;3,00;3,00;BTS;BTS NDRC 1A
+15;1;NOM & PRENOM 15;3,00;2,00;3,00;3,00;3,00;2,00;3,00;3,00;3,00;2,00;3,00;3,00;3,00;3,00;3,00;3,00;BTS;BTS SIO 1A
+16;11;NOM & PRENOM 16;2,91;2,73;2,82;2,73;2,91;2,55;2,82;2,73;2,73;2,55;2,45;3,00;3,00;2,82;2,91;2,91;BTS;BTS GPME 1A
+17;11;NOM & PRENOM 17;3,00;2,55;2,82;2,64;2,91;2,27;2,55;2,45;2,55;2,55;2,27;2,91;2,73;2,73;2,73;2,73;BTS;BTS SAM 1A
+18;2;NOM & PRENOM 18;2,50;1,50;1,50;1,50;1,50;2,00;1,00;0,50;1,50;1,50;1,50;2,00;2,00;2,50;1,50;1,50;BTS;BTS COM 1A
+19;4;NOM & PRENOM 19;3,00;3,00;3,00;3,00;1,50;3,00;3,00;2,75;3,00;2,50;2,75;2,75;2,50;3,00;3,00;2,75;BTS;BTS NDRC 1A
+20;1;NOM & PRENOM 20;2,00;2,00;2,00;2,00;2,00;2,00;2,00;2,00;2,00;2,00;1,00;1,00;2,00;2,00;2,00;2,00;BTS;BTS COM 1A
+21;16;NOM & PRENOM 21;2,56;2,13;2,31;2,44;2,50;2,19;2,25;2,38;1,94;2,13;1,81;2,31;2,50;2,31;2,56;2,31;BTS;BTS MCO 1A
+22;22;NOM & PRENOM 22;2,82;2,64;2,45;2,50;2,77;2,27;2,59;2,50;2,64;2,73;2,41;2,59;2,73;2,50;2,73;2,68;BACHELOR;BACHELOR CR A
+23;13;NOM & PRENOM 23;3,00;2,92;3,00;2,92;3,00;2,92;2,92;2,69;2,92;2,92;2,85;3,00;2,92;3,00;3,00;2,92;BACHELOR;BACHELOR CR B
+24;3;NOM & PRENOM 24;3,00;3,00;3,00;3,00;3,00;3,00;3,00;2,67;3,00;3,00;2,67;3,00;3,00;3,00;3,00;3,00;BACHELOR;BACHELOR RH
+25;1;NOM & PRENOM 25;3,00;3,00;3,00;3,00;3,00;3,00;3,00;3,00;3,00;3,00;3,00;3,00;3,00;3,00;3,00;3,00;BACHELOR;BACHELOR RH
+26;1;NOM & PRENOM 26;3,00;3,00;1,00;2,00;3,00;2,00;2,00;1,00;2,00;1,00;3,00;3,00;2,00;2,00;2,00;2,00;BACHELOR;BACHELOR CR A
+27;4;NOM & PRENOM 27;2,75;2,00;1,75;1,50;2,75;1,75;2,00;2,50;2,00;1,25;2,50;2,75;2,25;2,50;3,00;1,50;BACHELOR;BACHELOR RH
+28;2;NOM & PRENOM 28;3,00;3,00;3,00;3,00;3,00;3,00;3,00;3,00;3,00;3,00;3,00;3,00;3,00;3,00;3,00;3,00;BACHELOR;BACHELOR RH
+29;2;NOM & PRENOM 29;3,00;3,00;3,00;3,00;3,00;3,00;3,00;3,00;3,00;3,00;3,00;3,00;3,00;3,00;3,00;3,00;BACHELOR;BACHELOR RDC
+`;
+
+			// --- Helpers ---
+			const EXCLUDED_AXES = new Set(["ref"]);
+			const EXCLUDED_CONTAINS = ["nombre de réponse"];
+			const NAME_COL_CANDIDATES = ["nom", "classe"];
+			const META_SHOW = ["section", "classe", "nombre de réponses"];
+			const SCALE_MAX = 3;
+
+			function parseCSV(text) {
+				text = text.replace(/\r\n?|\n/g, "\n").trim();
+				const lines = text.split("\n");
+				if (!lines.length) return { headers: [], rows: [] };
+				const headers = lines[0].split(";").map((h) => h.trim());
+				const rows = lines
+					.slice(1)
+					.map((line) => line.split(";").map((v) => v.trim()));
+				return { headers, rows };
+			}
+
+			function detectNameCol(headers) {
+				const lower = headers.map((h) => h.toLowerCase());
+				for (const target of NAME_COL_CANDIDATES) {
+					const idx = lower.indexOf(target);
+					if (idx !== -1) return headers[idx];
+				}
+				return headers[0];
+			}
+
+			function isExcludedAxis(colName) {
+				const lc = colName.toLowerCase();
+				if (EXCLUDED_AXES.has(lc)) return true;
+				return EXCLUDED_CONTAINS.some((kw) => lc.includes(kw));
+			}
+
+			function toNumber(fr) {
+				if (fr === "" || fr == null) return NaN;
+				const s = fr.replace(/\s/g, "").replace(",", ".");
+				const n = Number(s);
+				return isNaN(n) ? NaN : n;
+			}
+
+			function prepareData(headers, rows) {
+				const nameCol = detectNameCol(headers);
+				const numericCandidates = headers.filter(
+					(h) => h !== nameCol && !isExcludedAxis(h)
+				);
+				const numericCols = numericCandidates.filter((h) =>
+					rows.some((r) => !isNaN(toNumber(r[headers.indexOf(h)])))
+				);
+				const metaCols = headers.filter((h) =>
+					META_SHOW.includes(h.toLowerCase())
+				);
+				const records = rows.map((r) => {
+					const rec = { name: r[headers.indexOf(nameCol)] || "" };
+					rec.scores = numericCols.map((h) => {
+						const v = r[headers.indexOf(h)];
+						const n = toNumber(v);
+						return isNaN(n) ? 0 : n;
+					});
+					metaCols.forEach((m) => (rec[m] = r[headers.indexOf(m)]));
+					return rec;
+				});
+				return { labels: numericCols, records };
+			}
+
+			function colorForIndex(i) {
+				const base = [
+					"rgba(75, 192, 192, 0.4)",
+					"rgba(153, 102, 255, 0.4)",
+					"rgba(255, 159, 64, 0.4)",
+					"rgba(54, 162, 235, 0.4)",
+					"rgba(255, 99, 132, 0.4)",
+					"rgba(255, 205, 86, 0.4)",
+					"rgba(201, 203, 207, 0.4)",
+				];
+				return base[i % base.length];
+			}
+			function borderForIndex(i) {
+				const base = [
+					"rgb(75, 192, 192)",
+					"rgb(153, 102, 255)",
+					"rgb(255, 159, 64)",
+					"rgb(54, 162, 235)",
+					"rgb(255, 99, 132)",
+					"rgb(255, 205, 86)",
+					"rgb(201, 203, 207)",
+				];
+				return base[i % base.length];
+			}
+
+			// Case-insensitive getter on record keys
+			function val(rec, keyLower) {
+				for (const k in rec)
+					if (k.toLowerCase() === keyLower) return rec[k];
+				return undefined;
+			}
+
+			function render(data) {
+				const { labels, records } = data;
+				const grid = document.getElementById("grid");
+				grid.innerHTML = "";
+				records.forEach((rec, idx) => {
+					const card = document.createElement("div");
+					card.className = "card";
+					const title = document.createElement("h3");
+					title.textContent = rec.name || "(Nom manquant)";
+					card.appendChild(title);
+
+					// --- Ligne sous le nom : Classe (+ nombre de personnes) ---
+					const sub = document.createElement("div");
+					sub.className = "subline";
+					const classe = val(rec, "classe");
+					const nbp = val(rec, "nombre de réponses");
+					if (classe) {
+						sub.textContent =
+							"" + classe + (nbp ? " (" + nbp + " rép.)" : "");
+					}
+					card.appendChild(sub);
+
+					const canvas = document.createElement("canvas");
+					canvas.id = "chart_" + idx;
+					card.appendChild(canvas);
+
+					// // --- Meta en dessous ---
+					// const meta = document.createElement("div");
+					// meta.className = "meta";
+					// const row = document.createElement("div");
+					// row.className = "meta-row";
+					// META_SHOW.forEach((mk) => {
+					// 	const v = val(rec, mk);
+					// 	if (v && String(v).trim() !== "") {
+					// 		const pill = document.createElement("span");
+					// 		pill.className = "pill";
+					// 		pill.innerHTML = `<b>${mk}:</b> ${v}`;
+					// 		row.appendChild(pill);
+					// 	}
+					// });
+					// meta.appendChild(row);
+					// card.appendChild(meta);
+
+					grid.appendChild(card);
+
+					const ctx = canvas.getContext("2d");
+					new Chart(ctx, {
+						type: "radar",
+						data: {
+							labels,
+							datasets: [
+								{
+									label: rec.name,
+									data: rec.scores,
+									backgroundColor: colorForIndex(idx),
+									borderColor: borderForIndex(idx),
+									borderWidth: 2,
+									pointRadius: 3,
+									pointHoverRadius: 5,
+									pointBackgroundColor: borderForIndex(idx),
+								},
+							],
+						},
+						options: {
+							responsive: true,
+							maintainAspectRatio: false,
+							scales: {
+								r: {
+									suggestedMin: 0,
+									suggestedMax: 3,
+									ticks: { stepSize: 1 },
+								},
+							},
+							plugins: {
+								legend: { display: false },
+								tooltip: {
+									callbacks: {
+										label: (ctx) =>
+											labels[ctx.dataIndex] + ": " + ctx.raw,
+									},
+								},
+							},
+						},
+					});
+				});
+			}
+
+			function loadCSVAndRender(text) {
+				const { headers, rows } = parseCSV(text);
+				const data = prepareData(headers, rows);
+				render(data);
+			}
+
+			// Initial render from embedded CSV
+			loadCSVAndRender(tableau);
+
+			// --- Drag & Drop & Click to upload ---
+			const drop = document.getElementById("drop");
+			const fileInput = document.getElementById("file");
+
+			drop.addEventListener("click", () => fileInput.click());
+			drop.addEventListener("dragover", (e) => {
+				e.preventDefault();
+				drop.classList.add("dragover");
+			});
+			drop.addEventListener("dragleave", () =>
+				drop.classList.remove("dragover")
+			);
+			drop.addEventListener("drop", (e) => {
+				e.preventDefault();
+				drop.classList.remove("dragover");
+				const file = e.dataTransfer.files[0];
+				if (file) readFile(file);
+			});
+			fileInput.addEventListener("change", () => {
+				const file = fileInput.files[0];
+				if (file) readFile(file);
+			});
+
+			function readFile(file) {
+				const reader = new FileReader();
+				reader.onload = (e) => {
+					const text = e.target.result;
+					tableau = text;
+					loadCSVAndRender(text);
+				};
+				reader.readAsText(file, "utf-8");
+			}
+		</script>
+	</body>
+</html>
