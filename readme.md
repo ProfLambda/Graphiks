@@ -22,7 +22,7 @@ L’échelle des notes est normalisée entre **0 et 3**.
 
 ## ⚙️ Utilisation
 
-1. Ouvrir le fichier `index.html` dans un navigateur moderne (Chrome, Edge, Firefox…).
+1. Ouvrir le fichier `[index.html](https://github.com/ProfLambda/Graphiks/deployments/github-pages)` dans un navigateur moderne (Chrome, Edge, Firefox…).
 2. Les graphiques sont générés automatiquement à partir du CSV embarqué.
 3. Pour tester un autre fichier :
    -  Glissez-déposez un CSV dans la zone prévue.
