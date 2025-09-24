@@ -2,7 +2,7 @@
 
 ## 📌 Description
 
-Ce projet est une page **HTML autonome** qui permet d’afficher, pour chaque enseignant, un graphique en **radar** représentant ses notes.  
+Ce projet est une page **HTML autonome** qui permet d’afficher, pour chaque enseignant, un graphique en **radar** représentant ses notes.
 Les données sont embarquées dans la page sous forme de **CSV** et peuvent être remplacées en déposant un nouveau fichier CSV directement dans la zone prévue (_drag & drop_).
 
 L’échelle des notes est normalisée entre **0 et 3**.
@@ -22,7 +22,7 @@ L’échelle des notes est normalisée entre **0 et 3**.
 
 ## ⚙️ Utilisation
 
-1. Ouvrir le fichier `radars_profs.html` dans un navigateur moderne (Chrome, Edge, Firefox…).
+1. Ouvrir le fichier `index.html` dans un navigateur moderne (Chrome, Edge, Firefox…).
 2. Les graphiques sont générés automatiquement à partir du CSV embarqué.
 3. Pour tester un autre fichier :
    -  Glissez-déposez un CSV dans la zone prévue.
