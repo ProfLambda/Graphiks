@@ -110,7 +110,11 @@ try {
 		e
 	);
 }
+
+let showAverages = true;
+
 function render(data) {
+	window.lastLoadedData = data; // Cache data for re-rendering
 	const { labels, records } = data;
 	const grid = document.getElementById("grid");
 	grid.innerHTML = "";
@@ -193,30 +197,17 @@ function render(data) {
 							return value.toFixed(1);
 						},
 					},
-					// datalabels: {
-					// 	anchor: "end",
-					// 	align: "top",
-					// 	offset: 8,
-					// 	backgroundColor: "rgba(255, 255, 255, 0.8)",
-					// 	borderColor: "rgba(0, 0, 0, 0.1)",
-					// 	borderWidth: 1,
-					// 	borderRadius: 4,
-					// 	color: "black",
-					// 	font: {
-					// 		size: 10,
-					// 		weight: "bold",
-					// 	},
-					// 	formatter: (value) => value.toFixed(1),
-					// },
 				},
 			},
 		});
 
 		// --- Ligne sous le nom : Moyenne ---
-		const avg = document.createElement("div");
-		avg.className = "subline";
-		avg.textContent = `Moyenne : ${rec.average.toFixed(2)} / ${SCALE_MAX}`;
-		card.appendChild(avg);
+		if (showAverages) {
+			const avg = document.createElement("div");
+			avg.className = "subline average-line";
+			avg.textContent = `Moyenne : ${rec.average.toFixed(2)} / ${SCALE_MAX}`;
+			card.appendChild(avg);
+		}
 	});
 }
 
@@ -276,6 +267,34 @@ function readFile(file) {
 	};
 	reader.readAsText(file, "utf-8");
 }
+
+// --- Modal and Options Logic ---
+const modal = document.getElementById("modal");
+const optionsGraphiquesLink = document.getElementById("options-graphiques");
+const closeButton = document.querySelector(".close-button");
+const showAveragesCheckbox = document.getElementById("show-averages");
+
+optionsGraphiquesLink.addEventListener("click", (e) => {
+    e.preventDefault();
+    modal.style.display = "block";
+});
+
+closeButton.addEventListener("click", () => {
+    modal.style.display = "none";
+});
+
+window.addEventListener("click", (e) => {
+    if (e.target == modal) {
+        modal.style.display = "none";
+    }
+});
+
+showAveragesCheckbox.addEventListener("change", () => {
+    showAverages = showAveragesCheckbox.checked;
+    if (window.lastLoadedData) {
+        render(window.lastLoadedData);
+    }
+});
 
 // Initial render
 loadAndRender();
