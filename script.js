@@ -96,6 +96,18 @@ function val(rec, keyLower) {
 	return undefined;
 }
 
+// --- Initialisation de Chart.js ---
+// Enregistrer le plugin `datalabels` globalement pour tous les graphiques
+// Cela suppose que `Chart` et `ChartDataLabels` sont disponibles globalement
+// via les balises <script> dans `index.html`.
+try {
+	Chart.register(ChartDataLabels);
+} catch (e) {
+	console.error(
+		"ChartDataLabels n'a pas pu être enregistré. Assurez-vous que le plugin est bien chargé.",
+		e
+	);
+}
 function render(data) {
 	const { labels, records } = data;
 	const grid = document.getElementById("grid");
@@ -163,6 +175,21 @@ function render(data) {
 								return `${intitule}: ${value}`;
 							},
 						},
+					},
+					datalabels: {
+						anchor: "end",
+						align: "top",
+						offset: 8,
+						backgroundColor: "rgba(255, 255, 255, 0.8)",
+						borderColor: "rgba(0, 0, 0, 0.1)",
+						borderWidth: 1,
+						borderRadius: 4,
+						color: "black",
+						font: {
+							size: 10,
+							weight: "bold",
+						},
+						formatter: (value) => value.toFixed(1),
 					},
 				},
 			},
