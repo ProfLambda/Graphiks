@@ -56,6 +56,11 @@ function prepareData(headers, rows) {
 			const n = toNumber(v);
 			return isNaN(n) ? 0 : n;
 		});
+
+		// moyenne
+		const sum = rec.scores.reduce((a, b) => a + b, 0);
+		rec.average = rec.scores.length > 0 ? sum / rec.scores.length : 0;
+
 		metaCols.forEach((m) => (rec[m] = r[headers.indexOf(m)]));
 		return rec;
 	});
@@ -126,6 +131,7 @@ function render(data) {
 		}
 		card.appendChild(sub);
 
+		// graphique
 		const canvas = document.createElement("canvas");
 		canvas.id = "chart_" + idx;
 		card.appendChild(canvas);
@@ -205,6 +211,12 @@ function render(data) {
 				},
 			},
 		});
+
+		// --- Ligne sous le nom : Moyenne ---
+		const avg = document.createElement("div");
+		avg.className = "subline";
+		avg.textContent = `Moyenne : ${rec.average.toFixed(2)} / ${SCALE_MAX}`;
+		card.appendChild(avg);
 	});
 }
 
