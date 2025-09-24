@@ -48,9 +48,7 @@ function prepareData(headers, rows) {
 	const numericCols = numericCandidates.filter((h) =>
 		rows.some((r) => !isNaN(toNumber(r[headers.indexOf(h)])))
 	);
-	const metaCols = headers.filter((h) =>
-		META_SHOW.includes(h.toLowerCase())
-	);
+	const metaCols = headers.filter((h) => META_SHOW.includes(h.toLowerCase()));
 	const records = rows.map((r) => {
 		const rec = { name: r[headers.indexOf(nameCol)] || "" };
 		rec.scores = numericCols.map((h) => {
@@ -91,11 +89,22 @@ function borderForIndex(i) {
 
 // Case-insensitive getter on record keys
 function val(rec, keyLower) {
-	for (const k in rec)
-		if (k.toLowerCase() === keyLower) return rec[k];
+	for (const k in rec) if (k.toLowerCase() === keyLower) return rec[k];
 	return undefined;
 }
 
+// --- Initialisation de Chart.js ---
+// Enregistrer le plugin `datalabels` globalement pour tous les graphiques
+// Cela suppose que `Chart` et `ChartDataLabels` sont disponibles globalement
+// via les balises <script> dans `index.html`.
+try {
+	Chart.register(ChartDataLabels);
+} catch (e) {
+	console.error(
+		"ChartDataLabels n'a pas pu être enregistré. Assurez-vous que le plugin est bien chargé.",
+		e
+	);
+}
 function render(data) {
 	const { labels, records } = data;
 	const grid = document.getElementById("grid");
@@ -113,8 +122,7 @@ function render(data) {
 		const classe = val(rec, "classe");
 		const nbp = val(rec, "nombre de réponses");
 		if (classe) {
-			sub.textContent =
-				"" + classe + (nbp ? " (" + nbp + " rép.)" : "");
+			sub.textContent = "" + classe + (nbp ? " (" + nbp + " rép.)" : "");
 		}
 		card.appendChild(sub);
 
@@ -155,6 +163,7 @@ function render(data) {
 				plugins: {
 					legend: { display: false },
 					tooltip: {
+						position: "nearest",
 						callbacks: {
 							label: (ctx) => {
 								const label = labels[ctx.dataIndex];
@@ -164,6 +173,35 @@ function render(data) {
 							},
 						},
 					},
+					datalabels: {
+						backgroundColor: function (context) {
+							return context.dataset.borderColor;
+						},
+						color: "white",
+						borderRadius: 4,
+						font: {
+							weight: "bold",
+						},
+						padding: 4,
+						formatter: function (value) {
+							return value.toFixed(1);
+						},
+					},
+					// datalabels: {
+					// 	anchor: "end",
+					// 	align: "top",
+					// 	offset: 8,
+					// 	backgroundColor: "rgba(255, 255, 255, 0.8)",
+					// 	borderColor: "rgba(0, 0, 0, 0.1)",
+					// 	borderWidth: 1,
+					// 	borderRadius: 4,
+					// 	color: "black",
+					// 	font: {
+					// 		size: 10,
+					// 		weight: "bold",
+					// 	},
+					// 	formatter: (value) => value.toFixed(1),
+					// },
 				},
 			},
 		});
@@ -206,9 +244,7 @@ drop.addEventListener("dragover", (e) => {
 	e.preventDefault();
 	drop.classList.add("dragover");
 });
-drop.addEventListener("dragleave", () =>
-	drop.classList.remove("dragover")
-);
+drop.addEventListener("dragleave", () => drop.classList.remove("dragover"));
 drop.addEventListener("drop", (e) => {
 	e.preventDefault();
 	drop.classList.remove("dragover");
