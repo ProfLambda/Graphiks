@@ -1,0 +1,890 @@
+<!DOCTYPE html>
+<html lang="fr">
+	<head>
+		<meta charset="utf-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1" />
+		<title>Test de positionnement – Excel (logique par points)</title>
+		<script src="https://cdn.tailwindcss.com"></script>
+	</head>
+	<body class="bg-gray-100 text-gray-900">
+		<div class="max-w-3xl mx-auto p-4 md:p-6">
+			<header class="mb-6">
+				<h1 class="text-2xl md:text-3xl font-bold"
+					>Test de positionnement – Excel</h1
+				>
+				<p class="text-sm text-gray-700 mt-1">
+					20 questions. Répondez, cliquez sur <strong>Valider</strong> pour
+					voir le feedback et les points, puis <strong>Suivant</strong>.
+				</p>
+			</header>
+
+			<!-- Carte principale -->
+			<div class="bg-white rounded-2xl shadow p-5 md:p-6">
+				<!-- Progression -->
+				<div class="mb-4">
+					<div
+						class="flex items-center justify-between text-sm text-gray-600">
+						<span id="progress-label">Question 1 / 20</span>
+						<span id="score-label">Score : 0</span>
+					</div>
+					<div class="w-full bg-gray-200 h-2 rounded mt-2">
+						<div
+							id="progress-bar"
+							class="bg-emerald-500 h-2 rounded"
+							style="width: 5%"></div>
+					</div>
+				</div>
+
+				<!-- Thème -->
+				<div
+					id="theme"
+					class="text-xs uppercase tracking-wide text-gray-500 mb-2"></div>
+
+				<!-- Question -->
+				<h2
+					id="question"
+					class="text-lg md:text-xl font-semibold mb-2"></h2>
+				<div id="multi-help" class="hidden mb-3 text-xs text-gray-600"
+					>Plusieurs réponses peuvent être correctes. Cochez toutes les
+					bonnes réponses.</div
+				>
+
+				<!-- Options -->
+				<form id="options" class="space-y-2 mb-4"></form>
+
+				<!-- Feedback -->
+				<div id="feedback" class="hidden p-3 rounded-lg text-sm"></div>
+
+				<!-- Pertinence -->
+				<details id="relevance" class="hidden mt-2">
+					<summary class="cursor-pointer text-sm text-gray-700 font-medium"
+						>Pourquoi cette question est pertinente ?</summary
+					>
+					<div
+						class="mt-1 text-sm text-gray-600"
+						id="relevance-text"></div>
+				</details>
+
+				<!-- Contrôles -->
+				<div class="mt-6 flex flex-wrap gap-2">
+					<button
+						id="prev-btn"
+						class="px-4 py-2 rounded-xl border text-sm disabled:opacity-40"
+						type="button"
+						>Précédent</button
+					>
+					<button
+						id="validate-btn"
+						class="px-4 py-2 rounded-xl bg-emerald-600 text-white text-sm"
+						type="button"
+						>Valider</button
+					>
+					<button
+						id="next-btn"
+						class="px-4 py-2 rounded-xl bg-indigo-600 text-white text-sm disabled:opacity-40"
+						type="button"
+						disabled
+						>Suivant</button
+					>
+					<button
+						id="finish-btn"
+						class="ml-auto px-4 py-2 rounded-xl bg-gray-900 text-white text-sm hidden"
+						type="button"
+						>Voir l’avis final</button
+					>
+				</div>
+			</div>
+
+			<!-- Résultat final -->
+			<div
+				id="final"
+				class="hidden bg-white rounded-2xl shadow p-5 md:p-6 mt-6">
+				<h3 class="text-xl font-semibold mb-2">Avis final</h3>
+				<p id="final-summary" class="mb-4 text-gray-800"></p>
+				<ul
+					id="final-flags"
+					class="list-disc pl-6 text-sm text-gray-700 mb-4"></ul>
+				<div id="recos" class="p-4 rounded-xl"></div>
+
+				<details class="mt-6">
+					<summary class="cursor-pointer text-sm text-gray-700 font-medium"
+						>Voir le récap par question</summary
+					>
+					<div id="recap" class="mt-3 space-y-3"></div>
+				</details>
+
+				<div class="mt-6 flex gap-2">
+					<button
+						id="restart-btn"
+						class="px-4 py-2 rounded-xl bg-indigo-600 text-white text-sm"
+						type="button"
+						>Recommencer</button
+					>
+					<button
+						id="export-btn"
+						class="px-4 py-2 rounded-xl border text-sm"
+						type="button"
+						>Exporter mes réponses (JSON)</button
+					>
+				</div>
+			</div>
+		</div>
+
+		<script>
+			/** ==============================================================
+			 *  BANQUE DE QUESTIONS (LOGIQUE PAR POINTS)
+			 *  --------------------------------------------------------------
+			 *  Pour chaque option, "points" >= 0 (ton bienveillant : jamais de malus).
+			 *  - single : 1 seule option sélectionnée → points de l’option choisie
+			 *  - multi  : somme des points des options cochées (les “bonnes” ont des points > 0)
+			 *  Le "maxPoints" d’une question =
+			 *     - single : Math.max(points des options)
+			 *     - multi  : somme des points des options (>0)
+			 *  ============================================================== */
+			const QUESTIONS = [
+				// Thème 1 – Équipement & environnement (poids plus important)
+				{
+					id: "Q1",
+					theme: "Équipement & environnement",
+					question:
+						"Quel matériel possédez-vous pour suivre la formation ?",
+					selectionType: "single",
+					options: [
+						{
+							label: "Ordinateur de bureau ou portable avec Excel installé",
+							points: 10,
+						},
+						{ label: "Tablette uniquement", points: 0 },
+						{ label: "Smartphone uniquement", points: 0 },
+						{ label: "Aucun des trois", points: 0 },
+					],
+					relevance:
+						"Le bon matériel, c’est votre terrain de jeu : avec un ordinateur, vous pouvez pratiquer à l’aise et progresser sereinement.",
+				},
+				{
+					id: "Q2",
+					theme: "Équipement & environnement",
+					question: "Quelle version d’Excel utilisez-vous ?",
+					selectionType: "single",
+					options: [
+						{ label: "Excel 2016 ou plus récent", points: 6 },
+						{ label: "Excel 2010 ou 2013", points: 5 },
+						{ label: "Excel Online (navigateur)", points: 2 },
+						{ label: "LibreOffice / autre tableur", points: 1 },
+						{ label: "Je ne sais pas", points: 2 },
+					],
+					relevance:
+						"Certaines fonctionnalités avancées dépendent de la version. Pas d’inquiétude si vous hésitez : on peut vérifier ensemble et s’adapter.",
+				},
+				{
+					id: "Q3",
+					theme: "Équipement & environnement",
+					question: "Avez-vous déjà ouvert un fichier Excel ?",
+					selectionType: "single",
+					options: [
+						{ label: "Oui, régulièrement", points: 4 },
+						{ label: "Oui, quelques fois", points: 3 },
+						{ label: "Non, jamais", points: 0 },
+					],
+					relevance:
+						"Avoir déjà manipulé Excel, même un peu, facilite l’entrée dans la formation. Chaque expérience compte.",
+				},
+				{
+					id: "Q4",
+					theme: "Équipement & environnement",
+					question:
+						"Savez-vous créer un nouveau fichier Excel et l’enregistrer sous un nom précis ?",
+					selectionType: "single",
+					options: [
+						{ label: "Oui", points: 6 },
+						{ label: "Non", points: 0 },
+						{ label: "Pas sûr", points: 2 },
+					],
+					relevance:
+						"Créer/enregistrer un fichier, c’est la base tranquille qui vous rend autonome dès le départ.",
+				},
+
+				// Thème 2 – Bases d’Excel
+				{
+					id: "Q5",
+					theme: "Bases d’Excel",
+					question:
+						"Comment insérer une nouvelle colonne entre deux colonnes existantes ?",
+					selectionType: "single",
+					options: [
+						{ label: "Clic droit > Insérer", points: 4 },
+						{
+							label: 'Taper "Ajouter colonne" dans une cellule',
+							points: 0,
+						},
+						{
+							label: "Impossible d’ajouter entre deux colonnes",
+							points: 0,
+						},
+					],
+					relevance:
+						"Maîtriser les manipulations simples (insérer/supprimer) rend vos tableaux souples et vivants.",
+				},
+				{
+					id: "Q6",
+					theme: "Bases d’Excel",
+					question:
+						"Quelle est la différence entre une cellule et une feuille ?",
+					selectionType: "single",
+					options: [
+						{
+							label: "Une cellule est une case ; une feuille regroupe des cellules",
+							points: 4,
+						},
+						{ label: "C’est la même chose", points: 0 },
+						{
+							label: "Une feuille est plus petite qu’une cellule",
+							points: 0,
+						},
+					],
+					relevance:
+						"Comprendre les briques de base d’Excel, c’est comme connaître l’alphabet avant d’écrire.",
+				},
+				{
+					id: "Q7",
+					theme: "Bases d’Excel",
+					question:
+						"Que s’affiche dans la cellule B3 si vous saisissez `=5+3` ?",
+					selectionType: "single",
+					options: [
+						{ label: "8", points: 4 },
+						{ label: "5+3", points: 0 },
+						{ label: "Rien", points: 0 },
+					],
+					relevance:
+						"Distinguer la formule (barre de formule) et le résultat (dans la cellule) est une clé pour progresser sereinement.",
+				},
+				{
+					id: "Q8",
+					theme: "Bases d’Excel",
+					question: "Comment sélectionner rapidement toute une colonne ?",
+					selectionType: "single",
+					options: [
+						{
+							label: "Cliquer sur son en-tête (la lettre en haut)",
+							points: 4,
+						},
+						{ label: "Sélectionner cellule par cellule", points: 1 },
+						{ label: "Impossible", points: 0 },
+					],
+					relevance:
+						"Les bons réflexes vous font gagner du temps et de la clarté au quotidien.",
+				},
+				{
+					id: "Q9",
+					theme: "Bases d’Excel",
+					question:
+						"Comment gérer un texte trop large pour la cellule ? (plusieurs réponses possibles)",
+					selectionType: "multi",
+					options: [
+						{
+							label: "Activer le retour à la ligne automatique",
+							points: 2,
+						},
+						{ label: "Réduire la taille de police", points: 1 },
+						{ label: "Agrandir la largeur de colonne", points: 2 },
+					],
+					relevance:
+						"Il existe souvent plusieurs bonnes solutions : savoir choisir celle qui convient au contexte est une vraie compétence.",
+				},
+				{
+					id: "Q10",
+					theme: "Bases d’Excel",
+					question:
+						"À quoi sert la poignée de recopie (petit carré en bas à droite d’une cellule) ?",
+					selectionType: "single",
+					options: [
+						{
+							label: "Copier la valeur/la formule dans les cellules voisines",
+							points: 4,
+						},
+						{ label: "Effacer la cellule", points: 0 },
+						{ label: "Déplacer la cellule", points: 0 },
+					],
+					relevance:
+						"Un petit geste pour un grand gain de temps : c’est un outil incontournable.",
+				},
+
+				// Thème 3 – Logique des formules
+				{
+					id: "Q11",
+					theme: "Logique des formules",
+					question: "Quelle formule additionne les valeurs de A1 à A10 ?",
+					selectionType: "single",
+					options: [
+						{ label: "=SOMME(A1:A10)", points: 5 },
+						{ label: "=A1+A10", points: 1 },
+						{ label: "=MOYENNE(A1:A10)", points: 0 },
+					],
+					relevance:
+						"SOMME, MOYENNE, MAX… ces fondamentaux ouvrent la porte aux formules plus avancées.",
+				},
+				{
+					id: "Q12",
+					theme: "Logique des formules",
+					question: "Que renvoie la fonction =AUJOURDHUI() ?",
+					selectionType: "single",
+					options: [
+						{ label: "La date du jour", points: 5 },
+						{ label: "Le mot « AUJOURDHUI »", points: 0 },
+						{ label: "Rien", points: 0 },
+					],
+					relevance:
+						"Les fonctions automatiques rendent vos fichiers dynamiques et toujours à jour.",
+				},
+				{
+					id: "Q13",
+					theme: "Logique des formules",
+					question:
+						"Si vous copiez la formule =A1+1 de B1 vers B2, que devient-elle ?",
+					selectionType: "single",
+					options: [
+						{ label: "=A2+1", points: 5 },
+						{ label: "=A1+1", points: 1 },
+						{ label: "=B1+1", points: 0 },
+					],
+					relevance:
+						"Les références relatives/absolues, c’est le cœur battant des formules réutilisables.",
+				},
+				{
+					id: "Q14",
+					theme: "Logique des formules",
+					question:
+						"Quelles formules permettent de calculer une moyenne de A1 à A10 ? (plusieurs réponses possibles)",
+					selectionType: "multi",
+					options: [
+						{ label: "=MOYENNE(A1:A10)", points: 3 },
+						{ label: "=SOMME(A1:A10)/10", points: 2 },
+						{ label: "=MAX(A1:A10)", points: 0 },
+					],
+					relevance:
+						"Savoir qu’il y a plusieurs chemins corrects vous rend plus agile dans vos calculs.",
+				},
+				{
+					id: "Q15",
+					theme: "Logique des formules",
+					question:
+						"Quelles formules permettent de vérifier si une cellule est vide ? (plusieurs réponses possibles)",
+					selectionType: "multi",
+					options: [
+						{ label: '=SI(A1="";"Vide";"Rempli")', points: 2 },
+						{ label: "=ESTVIDE(A1)", points: 3 },
+						{ label: "=NB(A1)", points: 0 },
+					],
+					relevance:
+						"Les tests logiques aident à automatiser des contrôles simples et fiables.",
+				},
+				{
+					id: "Q16",
+					theme: "Logique des formules",
+					question: "À quoi sert la fonction RECHERCHEV ?",
+					selectionType: "single",
+					options: [
+						{
+							label: "Rechercher une valeur dans une colonne et renvoyer une donnée associée",
+							points: 5,
+						},
+						{
+							label: "Trier des données par ordre alphabétique",
+							points: 0,
+						},
+						{ label: "Trouver la plus grande valeur", points: 0 },
+					],
+					relevance:
+						"Chercher et rapprocher des informations, c’est très fréquent en analyse de données.",
+				},
+
+				// Thème 4 – Culture & analyse
+				{
+					id: "Q17",
+					theme: "Culture & analyse",
+					question:
+						"Quel outil utiliser pour obtenir rapidement une synthèse d’un grand tableau ?",
+					selectionType: "single",
+					options: [
+						{ label: "Tableau croisé dynamique", points: 5 },
+						{ label: "Trier les données", points: 1 },
+						{ label: "Filtrer les données", points: 2 },
+					],
+					relevance:
+						"Le TCD est l’outil phare pour résumer : savoir l’identifier est un excellent signe.",
+				},
+				{
+					id: "Q18",
+					theme: "Culture & analyse",
+					question:
+						"Meilleure façon de représenter visuellement une évolution sur 12 mois ?",
+					selectionType: "single",
+					options: [
+						{ label: "Graphique en courbes", points: 4 },
+						{ label: "Graphique en secteurs", points: 1 },
+						{ label: "Histogramme horizontal", points: 2 },
+					],
+					relevance:
+						"Choisir le bon graphique, c’est raconter l’histoire des données avec clarté.",
+				},
+				{
+					id: "Q19",
+					theme: "Culture & analyse",
+					question: "À quoi sert le tri croissant dans Excel ?",
+					selectionType: "single",
+					options: [
+						{ label: "Ranger du plus petit au plus grand", points: 3 },
+						{ label: "Trouver la valeur la plus grande", points: 1 },
+						{ label: "Supprimer les doublons", points: 0 },
+					],
+					relevance:
+						"Trier, filtrer, nettoyer : des réflexes qui structurent vos analyses.",
+				},
+				{
+					id: "Q20",
+					theme: "Culture & analyse",
+					question:
+						"Vous recevez un fichier de 5 000 lignes : que faites-vous pour l’analyser efficacement ? (plusieurs réponses possibles)",
+					selectionType: "multi",
+					options: [
+						{ label: "Utiliser filtres et tri", points: 2 },
+						{ label: "Créer un tableau croisé dynamique", points: 3 },
+						{ label: "Parcourir ligne par ligne à la main", points: 0 },
+						{ label: "Utiliser des graphiques", points: 2 },
+					],
+					relevance:
+						"Savoir passer d’un gros tableau à une vision claire grâce aux bons outils fait gagner un temps précieux.",
+				},
+			];
+
+			/* ==============================================================
+   LOGIQUE / ETAT
+   ============================================================== */
+			const state = {
+				index: 0,
+				validated: Array(QUESTIONS.length).fill(false),
+				answers: Array(QUESTIONS.length).fill(null), // single: number|null ; multi: number[]|null
+				pointsEarned: Array(QUESTIONS.length).fill(0),
+				score: 0,
+			};
+
+			const els = {
+				progressLabel: document.getElementById("progress-label"),
+				scoreLabel: document.getElementById("score-label"),
+				progressBar: document.getElementById("progress-bar"),
+				theme: document.getElementById("theme"),
+				question: document.getElementById("question"),
+				multiHelp: document.getElementById("multi-help"),
+				options: document.getElementById("options"),
+				feedback: document.getElementById("feedback"),
+				relevanceBox: document.getElementById("relevance"),
+				relevanceText: document.getElementById("relevance-text"),
+				prevBtn: document.getElementById("prev-btn"),
+				validateBtn: document.getElementById("validate-btn"),
+				nextBtn: document.getElementById("next-btn"),
+				finishBtn: document.getElementById("finish-btn"),
+				final: document.getElementById("final"),
+				finalSummary: document.getElementById("final-summary"),
+				finalFlags: document.getElementById("final-flags"),
+				recos: document.getElementById("recos"),
+				recap: document.getElementById("recap"),
+				restartBtn: document.getElementById("restart-btn"),
+				exportBtn: document.getElementById("export-btn"),
+			};
+
+			function maxPointsForQuestion(q) {
+				if (q.selectionType === "single") {
+					return Math.max(...q.options.map((o) => o.points));
+				}
+				// multi: somme des points positifs (les réponses pertinentes)
+				return q.options.reduce((sum, o) => sum + Math.max(0, o.points), 0);
+			}
+
+			const TOTAL_MAX = QUESTIONS.reduce(
+				(acc, q) => acc + maxPointsForQuestion(q),
+				0
+			);
+
+			function renderQuestion() {
+				const i = state.index;
+				const q = QUESTIONS[i];
+
+				els.progressLabel.textContent = `Question ${i + 1} / ${
+					QUESTIONS.length
+				}`;
+				const pct = Math.max(5, Math.round((i / QUESTIONS.length) * 100));
+				els.progressBar.style.width = `${pct}%`;
+
+				els.theme.textContent = q.theme;
+				els.question.innerHTML = q.question;
+
+				// Aide multi
+				els.multiHelp.classList.toggle(
+					"hidden",
+					q.selectionType !== "multi"
+				);
+
+				// Options
+				els.options.innerHTML = "";
+				if (q.selectionType === "single") {
+					q.options.forEach((opt, idx) => {
+						const id = `q${i}_opt${idx}`;
+						const checked = state.answers[i] === idx ? "checked" : "";
+						els.options.insertAdjacentHTML(
+							"beforeend",
+							`
+        <label for="${id}" class="flex items-start gap-3 p-3 border rounded-xl hover:bg-gray-50 cursor-pointer">
+          <input ${checked} id="${id}" name="q${i}" type="radio" value="${idx}" class="mt-1" />
+          <span>${opt.label}</span>
+        </label>
+      `
+						);
+					});
+				} else {
+					const saved = Array.isArray(state.answers[i])
+						? state.answers[i]
+						: [];
+					q.options.forEach((opt, idx) => {
+						const id = `q${i}_opt${idx}`;
+						const checked = saved.includes(idx) ? "checked" : "";
+						els.options.insertAdjacentHTML(
+							"beforeend",
+							`
+        <label for="${id}" class="flex items-start gap-3 p-3 border rounded-xl hover:bg-gray-50 cursor-pointer">
+          <input ${checked} id="${id}" name="q${i}" type="checkbox" value="${idx}" class="mt-1" />
+          <span>${opt.label}</span>
+        </label>
+      `
+						);
+					});
+				}
+
+				// Reset feedback
+				els.feedback.classList.add("hidden");
+				els.feedback.classList.remove(
+					"bg-green-50",
+					"text-green-800",
+					"bg-amber-50",
+					"text-amber-800",
+					"bg-red-50",
+					"text-red-800"
+				);
+				els.feedback.textContent = "";
+				els.relevanceBox.classList.add("hidden");
+				els.relevanceText.textContent = "";
+
+				// Buttons state
+				els.prevBtn.disabled = i === 0;
+				els.nextBtn.disabled = !state.validated[i];
+				els.finishBtn.classList.toggle(
+					"hidden",
+					i !== QUESTIONS.length - 1
+				);
+
+				// Restore feedback si déjà validé
+				if (state.validated[i]) showFeedback();
+			}
+
+			function getCurrentSelection() {
+				const i = state.index;
+				const q = QUESTIONS[i];
+				if (q.selectionType === "single") {
+					const checked = els.options.querySelector(
+						'input[type="radio"]:checked'
+					);
+					return checked ? Number(checked.value) : null;
+				} else {
+					const checked = [
+						...els.options.querySelectorAll(
+							'input[type="checkbox"]:checked'
+						),
+					].map((n) => Number(n.value));
+					return checked.length ? checked : null;
+				}
+			}
+
+			function pointsForSelection(q, selection) {
+				if (selection === null) return 0;
+				if (q.selectionType === "single") {
+					const idx = selection;
+					return q.options[idx]?.points ?? 0;
+				}
+				// multi
+				return selection.reduce(
+					(sum, idx) => sum + (q.options[idx]?.points ?? 0),
+					0
+				);
+			}
+
+			function showFeedback() {
+				const i = state.index;
+				const q = QUESTIONS[i];
+				const earned = state.pointsEarned[i];
+				const maxP = maxPointsForQuestion(q);
+				const ratio = maxP ? earned / maxP : 0;
+
+				els.feedback.classList.remove("hidden");
+				// Couleur douce selon ratio
+				els.feedback.classList.toggle("bg-green-50", ratio >= 0.75);
+				els.feedback.classList.toggle("text-green-800", ratio >= 0.75);
+				els.feedback.classList.toggle(
+					"bg-amber-50",
+					ratio > 0 && ratio < 0.75
+				);
+				els.feedback.classList.toggle(
+					"text-amber-800",
+					ratio > 0 && ratio < 0.75
+				);
+				els.feedback.classList.toggle("bg-red-50", ratio === 0);
+				els.feedback.classList.toggle("text-red-800", ratio === 0);
+
+				// Message bienveillant
+				let msg = `Points obtenus : ${earned} / ${maxP}. `;
+				if (ratio >= 0.75)
+					msg += "Super 👍 Vous avez choisi une réponse très pertinente.";
+				else if (ratio > 0)
+					msg +=
+						"Bien 😊 Vous êtes dans la bonne direction. Une autre option pouvait rapporter davantage.";
+				else
+					msg +=
+						"Pas de souci 🙌 Cette question met en lumière une piste à explorer.";
+
+				els.feedback.textContent = msg;
+
+				els.relevanceBox.classList.remove("hidden");
+				els.relevanceText.textContent = q.relevance;
+			}
+
+			function validate() {
+				const i = state.index;
+				const q = QUESTIONS[i];
+				const sel = getCurrentSelection();
+				if (sel === null) {
+					els.options.classList.add("ring-2", "ring-red-300");
+					setTimeout(
+						() => els.options.classList.remove("ring-2", "ring-red-300"),
+						500
+					);
+					return;
+				}
+				state.answers[i] = sel;
+				const earned = pointsForSelection(q, sel);
+				if (!state.validated[i]) {
+					state.validated[i] = true;
+					state.pointsEarned[i] = earned;
+					state.score += earned;
+					els.scoreLabel.textContent = `Score : ${state.score}`;
+				} else {
+					// si revalidation (au cas où), on réajuste
+					state.score -= state.pointsEarned[i];
+					state.pointsEarned[i] = earned;
+					state.score += earned;
+					els.scoreLabel.textContent = `Score : ${state.score}`;
+				}
+				els.nextBtn.disabled = false;
+				showFeedback();
+			}
+
+			function nextQ() {
+				if (state.index < QUESTIONS.length - 1) {
+					state.index += 1;
+					renderQuestion();
+				}
+			}
+			function prevQ() {
+				if (state.index > 0) {
+					state.index -= 1;
+					renderQuestion();
+				}
+			}
+
+			function finalize() {
+				// Drapeaux doux (conseils importants)
+				const flags = [];
+				// Q1 matériel
+				const q1 = state.answers[0];
+				if (q1 !== 0)
+					flags.push(
+						"Matériel à prévoir : un ordinateur avec Excel installé facilitera grandement votre progression."
+					);
+				// Q2 version
+				const q2 = state.answers[1];
+				if ([2, 3, 4].includes(q2))
+					flags.push(
+						"Version/outil à clarifier : certaines fonctions avancées peuvent manquer. On peut vérifier ensemble la meilleure option."
+					);
+				// Q3 jamais ouvert
+				const q3 = state.answers[2];
+				if (q3 === 2)
+					flags.push(
+						"Une mini-initiation (1–2 h) aidera à prendre vos marques avant la partie avancée."
+					);
+				// Q4 créer/enregistrer
+				const q4 = state.answers[3];
+				if (q4 !== 0)
+					flags.push(
+						"Revoir la création et l’enregistrement d’un fichier : c’est rapide et très utile."
+					);
+
+				const total = TOTAL_MAX;
+				const score = state.score;
+				const pct = Math.round((score / total) * 100);
+
+				// Avis (bienveillant + progressif)
+				let verdict = "";
+				let style = "bg-blue-50 text-blue-900 border-blue-200";
+				if (q1 !== 0) {
+					verdict =
+						"⛔ Pré-requis matériel : équipez-vous d’un ordinateur avec Excel. Ensuite, vous serez dans les meilleures conditions pour apprendre.";
+					style = "bg-red-50 text-red-900 border-red-200";
+				} else if (pct >= 75 && flags.length === 0) {
+					verdict =
+						"✅ Très bon positionnement : vous êtes prêt·e pour la formation avancée (14 h).";
+					style = "bg-emerald-50 text-emerald-900 border-emerald-200";
+				} else if (pct >= 55) {
+					verdict =
+						"🟡 Bases solides : vous pouvez suivre la formation. Quelques rappels ciblés vous feront gagner encore en confort.";
+					style = "bg-amber-50 text-amber-900 border-amber-200";
+				} else if (pct >= 35) {
+					verdict =
+						"🟠 Position intermédiaire : une remise à niveau (2–4 h) rendra la formation avancée beaucoup plus fluide.";
+					style = "bg-orange-50 text-orange-900 border-orange-200";
+				} else {
+					verdict =
+						"🔴 Recommandation : commencez par une initiation pour installer les bases, puis revenez vers le module avancé.";
+					style = "bg-red-50 text-red-900 border-red-200";
+				}
+
+				els.finalSummary.textContent = `Score : ${score} / ${total} (${pct} %)`;
+				els.finalFlags.innerHTML = "";
+				flags.forEach((f) => {
+					const li = document.createElement("li");
+					li.textContent = f;
+					els.finalFlags.appendChild(li);
+				});
+				els.recos.className = `p-4 rounded-xl border ${style}`;
+				els.recos.textContent = verdict;
+
+				// Récap par question
+				els.recap.innerHTML = "";
+				QUESTIONS.forEach((q, idx) => {
+					const maxP = maxPointsForQuestion(q);
+					const earned = state.pointsEarned[idx] || 0;
+					const userAns = state.answers[idx];
+					const displayAns = Array.isArray(userAns)
+						? userAns.map((i) => q.options[i].label).join(" ; ")
+						: userAns === null
+						? "(aucune réponse)"
+						: q.options[userAns].label;
+
+					const bestLabels =
+						q.selectionType === "single"
+							? q.options.reduce(
+									(best, o) => (o.points > best.points ? o : best),
+									{ label: "", points: -1 }
+							  ).label
+							: q.options
+									.filter((o) => o.points > 0)
+									.map((o) => o.label)
+									.join(" ; ");
+
+					const card = document.createElement("div");
+					const good = maxP ? earned / maxP >= 0.75 : false;
+					const mid = maxP
+						? earned / maxP > 0 && earned / maxP < 0.75
+						: false;
+					card.className = `p-3 rounded-xl border ${
+						good
+							? "bg-green-50 border-green-200"
+							: mid
+							? "bg-amber-50 border-amber-200"
+							: "bg-red-50 border-red-200"
+					}`;
+					card.innerHTML = `
+      <div class="text-xs uppercase tracking-wide text-gray-500">${
+			q.theme
+		}</div>
+      <div class="font-medium mt-1">${idx + 1}. ${q.question}</div>
+      <div class="mt-1 text-sm"><span class="font-semibold">Votre réponse :</span> ${displayAns}</div>
+      <div class="text-sm"><span class="font-semibold">Pistes pertinentes :</span> ${
+			bestLabels || "(—)"
+		}</div>
+      <div class="text-sm mt-1"><span class="font-semibold">Points :</span> ${earned} / ${maxP}</div>
+    `;
+					els.recap.appendChild(card);
+				});
+
+				// Afficher la section finale
+				els.final.classList.remove("hidden");
+				els.final.scrollIntoView({ behavior: "smooth", block: "start" });
+			}
+
+			function restart() {
+				state.index = 0;
+				state.validated = Array(QUESTIONS.length).fill(false);
+				state.answers = Array(QUESTIONS.length).fill(null);
+				state.pointsEarned = Array(QUESTIONS.length).fill(0);
+				state.score = 0;
+				els.scoreLabel.textContent = `Score : 0`;
+				els.final.classList.add("hidden");
+				renderQuestion();
+			}
+
+			function exportAnswers() {
+				const payload = {
+					date: new Date().toISOString(),
+					score: state.score,
+					totalMax: TOTAL_MAX,
+					percent: Math.round((state.score / TOTAL_MAX) * 100),
+					answers: QUESTIONS.map((q, idx) => ({
+						id: q.id,
+						question: q.question,
+						selectionType: q.selectionType,
+						selectedIndices: Array.isArray(state.answers[idx])
+							? state.answers[idx]
+							: state.answers[idx] === null
+							? []
+							: [state.answers[idx]],
+						selectedLabels: Array.isArray(state.answers[idx])
+							? state.answers[idx].map((i) => q.options[i].label)
+							: state.answers[idx] === null
+							? []
+							: [q.options[state.answers[idx]].label],
+						earned: state.pointsEarned[idx],
+						maxPoints: maxPointsForQuestion(q),
+					})),
+				};
+				const blob = new Blob([JSON.stringify(payload, null, 2)], {
+					type: "application/json",
+				});
+				const url = URL.createObjectURL(blob);
+				const a = document.createElement("a");
+				a.href = url;
+				a.download = "resultat-test-excel-points.json";
+				document.body.appendChild(a);
+				a.click();
+				URL.revokeObjectURL(url);
+				a.remove();
+			}
+
+			// Raccourcis clavier (←/→, V pour valider)
+			document.addEventListener("keydown", (e) => {
+				if (e.key === "ArrowRight") nextQ();
+				if (e.key === "ArrowLeft") prevQ();
+				if (e.key.toLowerCase() === "v") validate();
+			});
+
+			// Boutons
+			els.prevBtn.addEventListener("click", prevQ);
+			els.validateBtn.addEventListener("click", validate);
+			els.nextBtn.addEventListener("click", nextQ);
+			els.finishBtn.addEventListener("click", finalize);
+			els.restartBtn.addEventListener("click", restart);
+			els.exportBtn.addEventListener("click", exportAnswers);
+
+			// Init
+			renderQuestion();
+		</script>
+	</body>
+</html>
